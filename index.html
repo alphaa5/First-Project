@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XENOVER :: Secure Data Terminal</title>
+    <style>
+        /* Global & Base Theme - Stealth Digital Look */
+        body {
+            background-color: #0c0c16; /* Deep Navy/Black */
+            color: #d0e0ff; /* Soft Digital White */
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            text-align: center;
+            overflow-x: hidden;
+            padding-top: 50px; 
+            box-sizing: border-box;
+            position: relative;
+        }
+        
+        /* Subtle Grid Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle, #1a1a3d 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        /* XENOVER Heading - Shake and Dynamic Color */
+        h1 {
+            font-size: 3.5rem; 
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+            color: #ff33cc; /* Default Pink */
+            text-shadow: 0 0 5px #ff33cc, 0 0 15px #ff33cc50; 
+            animation: shake 0.3s infinite alternate; 
+            padding: 0 10px; 
+            font-weight: bold;
+            position: relative;
+            transition: color 0.5s, text-shadow 0.5s; /* Smooth color change */
+        }
+        
+        /* Heading Color Change during Search (JS will apply this class) */
+        .searching-header {
+            color: #00ffcc !important; 
+            text-shadow: 0 0 5px #00ffcc, 0 0 15px #00ffcc50 !important;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(0.5px, 0.5px) rotate(0deg); }
+            100% { transform: translate(-0.5px, -0.5px) rotate(-0.2deg); }
+        }
+
+        /* Subheading */
+        h2 {
+            font-size: 1rem; 
+            margin-bottom: 40px;
+            color: #00ffcc; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #00ffcc;
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        /* Search Input & Button - Clean Look */
+        .search-container {
+            width: 95%; 
+            max-width: 400px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px; 
+        }
+
+        .search-input {
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 1px solid #00ffcc; 
+            background-color: #080812; /* Even darker input field */
+            color: #00ffcc;
+            box-shadow: 0 0 5px #00ffcc50;
+            outline: none;
+            text-align: center;
+            transition: border 0.3s;
+        }
+
+        .search-input::placeholder {
+            color: #00ffcc70; 
+        }
+
+        .search-button {
+            padding: 15px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background-color: #ff33cc;
+            color: #0c0c16;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff33cc;
+            font-weight: bold;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            border-radius: 2px;
+        }
+
+        .search-button:hover {
+            background-color: #00ffcc;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        /* ================================================= */
+        /* SINGLE INFO/RESULT BOX - Main Display Area */
+        /* ================================================= */
+        #info-display { 
+            width: 95%;
+            max-width: 400px;
+            min-height: 100px; 
+            background-color: #080812; /* Dark background */
+            border: 1px solid #ff33cc; 
+            box-shadow: 0 0 15px #ff33cc80;
+            margin-top: 25px;
+            padding: 15px;
+            text-align: left;
+            overflow: hidden;
+        }
+
+        /* General lines (for logs/status) */
+        .display-line {
+            color: #d0e0ff; 
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .error-line { 
+            color: #ff6666; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+            animation: pulse 1s infinite alternate;
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        /* Search/Status Animation Line */
+        .search-pulse {
+            color: #00ffcc;
+            font-weight: bold;
+            font-size: 1rem;
+            text-align: center;
+            padding: 20px 0;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
+        /* Result Items - Vertical and Large */
+        .result-group {
+            padding-top: 10px;
+            border-top: 1px dashed #00ffcc50;
+            margin-top: 10px;
+            opacity: 0; /* Starts hidden for fade-in */
+            transform: translateY(20px); /* Starts below */
+            animation: fadeInSlide 0.8s forwards; /* The cool new feature */
+        }
+        
+        @keyframes fadeInSlide {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* Delay multiple results */
+        .result-group:nth-child(2) { animation-delay: 0.2s; }
+        .result-group:nth-child(3) { animation-delay: 0.4s; }
+
+
+        .result-item-vert {
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .result-label {
+            color: #ff33cc; 
+            font-weight: bold;
+            display: block; 
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+        
+        .result-value {
+            color: #00ffcc; 
+            display: block;
+            font-size: 1.1rem; 
+        }
+
+        /* Footer Links - Minimal Look */
+        .footer-links {
+            position: fixed; 
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 8px 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #00ffcc30;
+            display: flex;
+            justify-content: space-around;
+            z-index: 10;
+        }
+
+        .footer-links a {
+            color: #00ffcc70; 
+            text-decoration: none;
+            font-size: 0.75rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #00ffcc;
+            text-shadow: 0 0 5px #ff33cc;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1 id="main-header">XENOVER</h1>
+
+    <h2>PAK SIM DATABASE SEARCH</h2>
+
+    <div class="search-container">
+        <input type="text" id="target-input" class="search-input" placeholder="Search Number or CNIC" maxlength="15" inputmode="text">
+        <button id="search-btn" class="search-button">
+            SEARCH DATA
+        </button>
+    </div>
+    
+    <div id="info-display">
+        <span class="display-line">[INIT] System Core Loaded.</span>
+        <span class="display-line">[STATUS] Awaiting User Query.</span>
+    </div>
+
+    <div class="footer-links">
+        <a href="#about">INFO</a>
+        <a href="#dmca">LEGAL</a>
+        <a href="#contact">CONTACT</a>
+        <a href="#docs">DOCS</a>
+    </div>
+
+    <script>
+        const infoDisplay = document.getElementById('info-display');
+        const targetInput = document.getElementById('target-input');
+        const searchButton = document.getElementById('search-btn');
+        const mainHeader = document.getElementById('main-header'); // For dynamic color
+
+        // Log message/status ko info-display box mein jodna
+        function appendStatus(message, className = 'display-line') {
+            infoDisplay.innerHTML = `<span class="${className}">${message}</span>`;
+        }
+
+        // Search results ko display karna (Vertical, Large Font, Fade-in)
+        function displayResults(data) {
+            infoDisplay.innerHTML = ''; 
+            
+            if (!data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)) {
+                appendStatus('[RECORD NOT FOUND] The query returned no valid data.', 'error-line');
+                return;
+            }
+
+            const dataArray = Array.isArray(data) ? data : [data];
+            let htmlContent = '';
+
+            dataArray.forEach((item, index) => {
+                if (item && (item.name || item.number || item.cnic)) {
+                    htmlContent += `<div class="result-group" style="animation-delay: ${index * 0.2}s;">`; // Dynamic delay
+                    
+                    if (dataArray.length > 1) {
+                         htmlContent += `<div class="result-item-vert"><span class="result-label">RECORD # ${index + 1}</span></div>`;
+                    }
+                    
+                    htmlContent += `
+                        <div class="result-item-vert">
+                            <span class="result-label">NAME:</span> 
+                            <span class="result-value">${item.name || 'N/A'}</span>
+                        </div>
+                        <div class="result-item-vert">
+                            <span class="result-label">CNIC:</span> 
+                            <span class="result-value">${item.cnic || 'N/A'}</span>
+                        </div>
+                        <div class="result-item-vert">
+                            <span class="result-label">NUMBER:</span> 
+                            <span class="result-value">${item.number || 'N/A'}</span>
+                        </div>
+                        <div class="result-item-vert">
+                            <span class="result-label">ADDRESS:</span> 
+                            <span class="result-value">${item.address || 'N/A'} ${item.city || ''}</span>
+                        </div>
+                        <div class="result-item-vert">
+                            <span class="result-label">OPERATOR:</span> 
+                            <span class="result-value">${item.operator || 'N/A'}</span>
+                        </div>
+                    `;
+                    htmlContent += `</div>`;
+                }
+            });
+            
+            infoDisplay.innerHTML = htmlContent;
+        }
+
+        /**
+         * API se data fetch karne ka asynchronous function
+         */
+        async function getData(query) {
+            if (!query) {
+                appendStatus('[ERROR] Target ID not provided. Aborting Query.', 'error-line');
+                return;
+            }
+
+            // Simple formatting for API
+            if (query.length === 11 && (query.startsWith("03") || query.startsWith("04"))) {
+                query = query.substring(1);
+            } else if (query.length < 10) {
+                 appendStatus('[ERROR] Input too short. Use 10-digit number or 13-digit CNIC.', 'error-line');
+                 return;
+            }
+
+            // FEATURE 1: Dynamic Heading Color Change (Start)
+            mainHeader.classList.add('searching-header');
+            
+            // Searching Animation
+            appendStatus('SEARCHING... Establishing Secure Connection...', 'search-pulse');
+
+            // API URL
+            const apiUrl = `https://api.nexoracle.com/details/pak-sim-database-free?apikey=free_key@maher_apis&q=${query}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Status ${response.status} | API may be down.`);
+                }
+
+                const data = await response.json();
+                
+                // Display Results or Error
+                if (data.result === "No SIM or CNIC data found." || data.result === "No SIM data found." || !data.result) {
+                    appendStatus('[RETRIEVAL FAILURE] Target ID not found in database.', 'error-line');
+                } else {
+                    displayResults(data.result);
+                }
+
+            } catch (error) {
+                // Network or CORS issues
+                if (error.message.includes("Failed to fetch")) {
+                    appendStatus('[SYSTEM CRITICAL] Connection Refused. Check API CORS Policy or Network.', 'error-line');
+                } else {
+                    appendStatus(`[SYSTEM ERROR] Data fetch/parse error. DETAILS: ${error.message}`, 'error-line');
+                }
+            } finally {
+                // FEATURE 1: Dynamic Heading Color Change (End)
+                setTimeout(() => {
+                    mainHeader.classList.remove('searching-header');
+                }, 1000); // Wait 1 second before reverting color
+            }
+        }
+
+        // Event Listeners for Button and Enter key
+        searchButton.addEventListener('click', () => {
+            const targetNumber = targetInput.value.trim();
+            getData(targetNumber);
+            targetInput.value = '';
+        });
+        
+        targetInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const targetNumber = targetInput.value.trim();
+                getData(targetNumber);
+                targetInput.value = '';
+            }
+        });
+        
+        // Initial status reset
+        window.onload = () => {
+             appendStatus('[INIT] System Core Loaded. [STATUS] Awaiting User Query.', 'display-line');
+        };
+    </script>
+
+</body>
+</html>
