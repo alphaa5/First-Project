@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XENOVER :: Secure Data Terminal</title>
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* Global & Base Theme - Stealth Digital Look */
         body {
@@ -133,10 +136,11 @@
             background-color: #080812; /* Dark background */
             border: 1px solid #ff33cc; 
             box-shadow: 0 0 15px #ff33cc80;
-            margin-top: 25px;
             padding: 15px;
             text-align: left;
             overflow: hidden;
+            position: relative; /* For PDF button positioning */
+            padding-bottom: 40px; /* Space for the button */
         }
 
         /* General lines (for logs/status) */
@@ -210,6 +214,59 @@
             display: block;
             font-size: 1.1rem; 
         }
+        
+        /* FEATURE 1: PDF Download Button Style */
+        .download-pdf-btn {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: transparent;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 5px 10px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            border-radius: 2px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .download-pdf-btn:hover {
+            background-color: #00ffcc;
+            color: #0c0c16;
+            box-shadow: 0 0 5px #00ffcc;
+        }
+        
+        /* FEATURE 2: "Connect with us" Button Style */
+        .connect-container {
+             width: 95%; 
+             max-width: 400px;
+             margin-top: 25px;
+        }
+        
+        .connect-button {
+            display: block;
+            padding: 15px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background-color: #00ffcc; /* Different color to stand out */
+            color: #0c0c16;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00ffcc;
+            font-weight: bold;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            border-radius: 2px;
+            text-decoration: none;
+        }
+        
+        .connect-button:hover {
+            background-color: #ff33cc;
+            box-shadow: 0 0 15px #ff33cc;
+        }
+
 
         /* Footer Links - Minimal Look */
         .footer-links {
@@ -256,6 +313,13 @@
         <span class="display-line">[INIT] System Core Loaded.</span>
         <span class="display-line">[STATUS] Awaiting User Query.</span>
     </div>
+    
+    <!-- FEATURE 2: Connect Button Added Here -->
+    <div class="connect-container">
+        <a href="https://whatsapp.com/channel/0029Vb69uw7EawdnN1zo5T3u" target="_blank" class="connect-button">
+            Connect with us
+        </a>
+    </div>
 
     <div class="footer-links">
         <a href="#about">INFO</a>
@@ -274,6 +338,44 @@
         function appendStatus(message, className = 'display-line') {
             infoDisplay.innerHTML = `<span class="${className}">${message}</span>`;
         }
+        
+        /**
+         * FEATURE 1: Function to download the result box content as PDF
+         */
+        function downloadPDF() {
+            const downloadBtn = document.getElementById('download-btn');
+            const infoBox = document.getElementById('info-display');
+            const cnicValue = infoBox.querySelector('.result-value')?.innerText || 'Unknown';
+            const fileName = `XENOVER_Record_${cnicValue.trim()}.pdf`;
+
+            // Button ko screenshot se pehle hide kar dein
+            if(downloadBtn) downloadBtn.style.display = 'none';
+
+            html2canvas(infoBox, {
+                backgroundColor: '#080812', // Background color capture karein
+                useCORS: true 
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const canvasAspectRatio = canvas.width / canvas.height;
+                const imgHeight = pdfWidth / canvasAspectRatio;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
+                pdf.save(fileName);
+
+                // Button ko wapas show kar dein
+                if(downloadBtn) downloadBtn.style.display = 'block';
+            }).catch(err => {
+                console.error("PDF generation failed:", err);
+                // Agar error aaye to bhi button wapas show karein
+                if(downloadBtn) downloadBtn.style.display = 'block';
+                alert("Could not generate PDF. Please try again.");
+            });
+        }
+
 
         // Search results ko display karna (Vertical, Large Font, Fade-in)
         function displayResults(data) {
@@ -322,6 +424,13 @@
             });
             
             infoDisplay.innerHTML = htmlContent;
+
+            // FEATURE 1: PDF Download Button ko add karna aur event listener lagana
+            if (htmlContent) {
+                const downloadButtonHTML = `<button id="download-btn" class="download-pdf-btn">Download PDF</button>`;
+                infoDisplay.innerHTML += downloadButtonHTML;
+                document.getElementById('download-btn').addEventListener('click', downloadPDF);
+            }
         }
 
         /**
@@ -341,13 +450,9 @@
                  return;
             }
 
-            // FEATURE 1: Dynamic Heading Color Change (Start)
             mainHeader.classList.add('searching-header');
-            
-            // Searching Animation
             appendStatus('SEARCHING... Establishing Secure Connection...', 'search-pulse');
 
-            // API URL
             const apiUrl = `https://api.nexoracle.com/details/pak-sim-database-free?apikey=free_key@maher_apis&q=${query}`;
 
             try {
@@ -359,7 +464,6 @@
 
                 const data = await response.json();
                 
-                // Display Results or Error
                 if (data.result === "No SIM or CNIC data found." || data.result === "No SIM data found." || !data.result) {
                     appendStatus('[RETRIEVAL FAILURE] Target ID not found in database.', 'error-line');
                 } else {
@@ -367,17 +471,15 @@
                 }
 
             } catch (error) {
-                // Network or CORS issues
                 if (error.message.includes("Failed to fetch")) {
                     appendStatus('[SYSTEM CRITICAL] Connection Refused. Check API CORS Policy or Network.', 'error-line');
                 } else {
                     appendStatus(`[SYSTEM ERROR] Data fetch/parse error. DETAILS: ${error.message}`, 'error-line');
                 }
             } finally {
-                // FEATURE 1: Dynamic Heading Color Change (End)
                 setTimeout(() => {
                     mainHeader.classList.remove('searching-header');
-                }, 1000); // Wait 1 second before reverting color
+                }, 1000); 
             }
         }
 
